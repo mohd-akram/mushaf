@@ -1,0 +1,153 @@
+#!/bin/sh
+set -eu
+
+data=${1-}
+font=${2-}
+
+if [ ! "$data" ] || [ ! "$font" ]; then
+	echo usage: `basename $0` data font >&2
+	exit 1
+fi
+
+mkdir -p build/epub
+cd build/epub
+data=../../"$data"
+font=../../"$font"
+
+rm -rf EPUB META-INF
+mkdir -p EPUB/css EPUB/fonts META-INF
+cp "$font" EPUB/fonts/quran.ttf
+
+chapter_items() {
+	i=1
+	while [ $i -le 114 ]; do
+		echo "    <item id=\"chapter-$i\" href=\"chapter-$i.xhtml\" media-type=\"application/xhtml+xml\"/>"
+		i=$((i+1))
+	done
+}
+
+chapter_itemrefs() {
+	i=1
+	while [ $i -le 114 ]; do
+		echo "    <itemref idref=\"chapter-$i\"/>"
+		i=$((i+1))
+	done
+}
+
+printf 'application/epub+zip' > mimetype
+
+cat <<EOF >EPUB/css/epub.css
+@font-face {
+  font-family: quran;
+  src: url(../fonts/quran.ttf) format("truetype");
+}
+
+body {
+  font-family: quran;
+}
+EOF
+
+cat <<EOF >META-INF/container.xml
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0">
+  <rootfiles>
+    <rootfile full-path="EPUB/package.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>
+EOF
+
+cat <<EOF >META-INF/com.apple.ibooks.display-options.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<display_options><platform name="*"><option name="specified-fonts">true</option></platform></display_options>
+EOF
+
+cat <<EOF >EPUB/package.opf
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<package xmlns="http://www.idpf.org/2007/opf" xmlns:dc="http://purl.org/dc/elements/1.1/"
+  xmlns:dcterms="http://purl.org/dc/terms/" version="3.0" xml:lang="en"
+  unique-identifier="pub-identifier">
+  <metadata>
+    <dc:identifier id="pub-identifier">646B2B07-883A-4EBE-A2DF-3D2C6A843031</dc:identifier>
+    <dc:title>القرآن الكريم</dc:title>
+    <dc:creator id="creator">الله</dc:creator>
+    <dc:date>2020-12-17</dc:date>
+    <dc:subject>Religion &amp; Spirituality</dc:subject>
+    <dc:language>ar</dc:language>
+    <meta property="dcterms:modified">2020-12-17T23:27:56Z</meta>
+  </metadata>
+  <manifest>
+    <item id="font" href="fonts/quran.ttf" media-type="font/ttf"/>
+    <item id="stylesheet" href="css/epub.css" media-type="text/css"/>
+    <item id="toc" properties="nav" media-type="application/xhtml+xml" href="toc.xhtml"/>
+$(chapter_items)
+  </manifest>
+  <spine page-progression-direction="rtl">
+$(chapter_itemrefs)
+  </spine>
+</package>
+EOF
+
+chapter_links=$(awk -F, '
+function end(filename) {
+	print \
+		"  </body>\n" \
+		"</html>" \
+		>> filename
+}
+{
+	gsub(/"/, "")
+	if (NR == 1) {
+		for (i = 1; i <= NF; i++) map[i] = $i
+		next
+	}
+	for (i=1; i <= NF; i++) verse[map[i]] = $i
+	if (verse["aya_no"] == 1) {
+		if (verse["sora_no"] != 1) end(filename)
+		filename = sprintf("EPUB/chapter-%d.xhtml", verse["sora_no"])
+		printf "        <li><a href=\"chapter-%s.xhtml\">%s</a></li>\n", verse["sora_no"], verse["sora_name_ar"]
+		printf \
+			"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n" \
+			"<!DOCTYPE html>\n" \
+			"<html xmlns=\"http://www.w3.org/1999/xhtml\"" \
+			" xmlns:epub=\"http://www.idpf.org/2007/ops\"" \
+			" xml:lang=\"ar\" lang=\"ar\" dir=\"rtl\">\n" \
+			"  <head>\n" \
+			"    <title>%s</title>\n" \
+			"    <link rel=\"stylesheet\" type=\"text/css\" href=\"css/epub.css\" />\n" \
+			"  </head>\n" \
+			"  <body>\n" \
+			"    <h1>%s</h1>\n", \
+			verse["sora_name_ar"], verse["sora_name_ar"] \
+		> filename
+	}
+	printf "    %s\n", verse["aya_text"] >> filename
+}
+END {
+	end(filename)
+}
+' "$data")
+
+cat <<EOF >EPUB/toc.xhtml
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="ar"
+  lang="ar" dir="rtl">
+  <head>
+    <title>القرآن الكريم</title>
+    <link rel="stylesheet" type="text/css" href="css/epub.css" />
+  </head>
+  <body>
+    <h1>القرآن الكريم</h1>
+    <nav epub:type="toc" id="toc" role="doc-toc">
+      <h2>الفهرس</h2>
+      <ol>
+$chapter_links
+      </ol>
+    </nav>
+  </body>
+</html>
+EOF
+
+rm -f mushaf.epub
+zip -Xr mushaf.epub mimetype EPUB META-INF
+mv mushaf.epub ../..
