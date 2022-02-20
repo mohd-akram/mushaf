@@ -102,9 +102,9 @@ function end(filename) {
 	}
 	for (i=1; i <= NF; i++) verse[map[i]] = $i
 	if (verse["aya_no"] == 1) {
-		if (verse["sora_no"] != 1) end(filename)
-		filename = sprintf("EPUB/chapter-%d.xhtml", verse["sora_no"])
-		printf "        <li><a href=\"chapter-%s.xhtml\">%s</a></li>\n", verse["sora_no"], verse["sora_name_ar"]
+		if (verse["sora"] != 1) end(filename)
+		filename = sprintf("EPUB/chapter-%d.xhtml", verse["sora"])
+		printf "        <li><a href=\"chapter-%s.xhtml\">%s</a></li>\n", verse["sora"], verse["sora_name_ar"]
 		printf \
 			"<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n" \
 			"<!DOCTYPE html>\n" \
