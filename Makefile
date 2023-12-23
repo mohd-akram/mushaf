@@ -4,10 +4,10 @@ kepub: mushaf.kepub.epub
 
 type = hafs
 data_type = UthmanicHafs
-data_ver = 18
+data_ver = 2-0
 
-data_file = $(data_type)_v$(data_ver).zip
-data_name = $(data_type)1 Ver$(data_ver)
+data_name = $(data_type)_v$(data_ver)
+data_file = $(data_name).zip
 
 mushaf.kepub.epub: mushaf.epub
 	kepubify mushaf.epub
@@ -24,4 +24,6 @@ data/$(type).csv: $(data_file)
 
 font/$(type).ttf: $(data_file)
 	mkdir -p font && unzip -p $(data_file) \
-		"$(data_name) font/$(data_name).ttf" > $@
+		"$(data_name) font/uthmanic_$(type)_v$$(\
+			echo $(data_ver) | tr -d -\
+		).ttf" > $@
