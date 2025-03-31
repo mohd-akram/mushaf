@@ -116,7 +116,7 @@ function end(filename) {
 			"    <link rel=\"stylesheet\" type=\"text/css\" href=\"css/epub.css\" />\n" \
 			"  </head>\n" \
 			"  <body>\n" \
-			"    <h1>%s</h1>\n", \
+			"    <h1>%s</h1>\n",
 			verse["sura_name_ar"], verse["sura_name_ar"] \
 		> filename
 	}
